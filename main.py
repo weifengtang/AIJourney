@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""
+SumAll - 程序员每日工作会话自动归档框架
+
+主程序入口
+"""
+
+import argparse
+import logging
+import sys
+from datetime import date, datetime
+from pathlib import Path
+from typing import List
+
+from config import init_config, get_config
+from collectors import get_all_collector_instances, SessionData
+from report import ReportGenerator
+
+
+def setup_logging(log_level: str = "INFO", log_dir: Path = None):
+    """
+    配置日志系统
+    
+    Args:
+        log_level: 日志级别
+        log_dir: 日志目录
+    """
+    # 创建日志目录
+    if log_dir:
+        log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 配置日志格式
+    log_format = "%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+    
+    # 配置根日志器
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format=log_format,
+        datefmt=date_format,
+        handlers=[
+            # 控制台输出
+            logging.StreamHandler(sys.stdout),
+        ]
+    )
+    
+    # 添加文件输出（如果指定了日志目录）
+    if log_dir:
+        log_file = log_dir / f"sumall_{date.today().strftime('%Y%m%d')}.log"
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter(log_format, date_format))
+        logging.root.addHandler(file_handler)
+    
+    logger = logging.getLogger(__name__)
+    logger.info("日志系统初始化完成")
+
+
+def safe_collect(collector, target_date: date) -> List[SessionData]:
+    """
+    安全执行采集任务
+    
+    Args:
+        collector: 采集器实例
+        target_date: 目标日期
+    
+    Returns:
+        会话数据列表
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # 验证采集器
+        if not collector.validate():
+            logger.warning(f"采集器 {collector.name} 验证失败，跳过")
+            return []
+        
+        # 执行采集
+        return collector.collect(target_date)
+    
+    except Exception as e:
+        logger.error(f"采集器 {collector.name} 执行失败: {e}", exc_info=True)
+        return []
+
+
+def collect_all(target_date: date, enabled_collectors: List[str] = None) -> List[SessionData]:
+    """
+    执行所有采集器的采集任务
+    
+    Args:
+        target_date: 目标日期
+        enabled_collectors: 启用的采集器列表（None 表示全部启用）
+    
+    Returns:
+        所有会话数据列表
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"开始采集 {target_date} 的会话数据")
+    
+    # 获取所有采集器实例
+    all_collectors = get_all_collector_instances()
+    logger.info(f"已注册 {len(all_collectors)} 个采集器: {[c.name for c in all_collectors]}")
+    
+    # 过滤启用的采集器
+    if enabled_collectors:
+        collectors = [c for c in all_collectors if c.name in enabled_collectors]
+        logger.info(f"启用的采集器: {[c.name for c in collectors]}")
+    else:
+        collectors = all_collectors
+    
+    # 执行采集
+    all_sessions = []
+    for collector in collectors:
+        logger.info(f"执行采集器: {collector.name}")
+        sessions = safe_collect(collector, target_date)
+        all_sessions.extend(sessions)
+        logger.info(f"采集器 {collector.name} 返回 {len(sessions)} 个会话")
+    
+    logger.info(f"采集完成，共获取 {len(all_sessions)} 个会话")
+    return all_sessions
+
+
+def generate_report(sessions: List[SessionData], output_dir: Path, output_format: List[str], target_date: date):
+    """
+    生成报告
+    
+    Args:
+        sessions: 会话数据列表
+        output_dir: 输出目录
+        output_format: 输出格式列表
+        target_date: 目标日期
+    """
+    logger = logging.getLogger(__name__)
+    
+    # 使用报告生成器
+    generator = ReportGenerator(output_dir)
+    generator.generate(sessions, target_date, output_format)
+
+
+def main():
+    """主函数"""
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="SumAll - 程序员每日工作会话自动归档框架")
+    parser.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="目标日期（格式：YYYY-MM-DD，默认今天）"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="./output",
+        help="输出目录（默认：./output）"
+    )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="日志级别（默认：INFO）"
+    )
+    parser.add_argument(
+        "--collectors",
+        type=str,
+        nargs="+",
+        default=None,
+        help="启用的采集器（默认：全部）"
+    )
+    
+    args = parser.parse_args()
+    
+    # 解析目标日期
+    if args.date:
+        target_date = datetime.strptime(args.date, "%Y-%m-%d").date()
+    else:
+        target_date = date.today()
+    
+    # 初始化配置
+    init_config(
+        output_dir=args.output,
+        log_level=args.log_level,
+        enabled_collectors=args.collectors,
+    )
+    
+    # 配置日志
+    config = get_config()
+    setup_logging(config.log_level, config.log_dir)
+    
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 60)
+    logger.info("SumAll 启动")
+    logger.info(f"目标日期: {target_date}")
+    logger.info(f"输出目录: {config.output_dir}")
+    logger.info(f"日志级别: {config.log_level}")
+    logger.info("=" * 60)
+    
+    # 执行采集
+    sessions = collect_all(target_date, config.enabled_collectors)
+    
+    # 生成报告
+    generate_report(sessions, config.output_dir, config.output_format, target_date)
+    
+    logger.info("=" * 60)
+    logger.info("SumAll 执行完成")
+    logger.info("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

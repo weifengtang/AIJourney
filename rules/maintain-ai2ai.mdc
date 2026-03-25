@@ -1,0 +1,16 @@
+---
+description: AI2AI文档维护Skill。在完成开发任务后调用，用于校验和更新 spec/AI2AI/ 下的三份文档，确保文档与代码保持一致。
+alwaysApply: false
+enabled: true
+updatedAt: 2026-02-26T06:55:53.793Z
+provider: 
+---
+
+# maintain-ai2ai Skill
+
+## 用途
+在完成开发任务后，校验并更新 `spec/AI2AI/` 下的三份文档，确保文档与代码保持一致。
+
+## 执行流程
+
+### 第一步：运行校验 

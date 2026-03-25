@@ -1,0 +1,18 @@
+# SumAll 依赖
+
+# 核心依赖（Python 内置，无需安装）
+# - pathlib
+# - json
+# - datetime
+# - logging
+# - argparse
+
+# 测试依赖
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# 类型检查
+mypy>=1.0.0
+
+# 代码风格
+flake8>=5.0.0

@@ -1,0 +1,15 @@
+{
+  "llm": {
+    "enabled": true,
+    "api_base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
+    "api_key": "YOUR_API_KEY_HERE",
+    "model": "ark-code-latest",
+    "max_tokens": 1000,
+    "timeout": 30,
+    "max_messages": 50
+  },
+  "summary": {
+    "cache_dir": "./output/.summary_cache",
+    "cache_enabled": true
+  }
+}
