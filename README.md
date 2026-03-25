@@ -1,12 +1,12 @@
-# SumAll 📝
-> 程序员每日工作会话自动归档框架
+# AIJourney 🚀
+> 记录你的 AI 编程成长之旅，自动归档每日工作会话
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://github.com/yourusername/SumAll/workflows/Tests/badge.svg)](https://github.com/yourusername/SumAll/actions)
-[![Coverage](https://img.shields.io/badge/coverage-69%25-green.svg)](https://github.com/yourusername/SumAll)
+[![Tests](https://github.com/weifengtang/AIJourney/workflows/Tests/badge.svg)](https://github.com/weifengtang/AIJourney/actions)
+[![Coverage](https://img.shields.io/badge/coverage-69%25-green.svg)](https://github.com/weifengtang/AIJourney)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-自动采集多个 AI 编程工具的会话数据，生成结构化的工作日报。再也不用手动写日报了！
+自动采集多个 AI 编程工具的会话数据，生成结构化的工作日报。让每一段 AI 协作都被永久记录，让你的成长可视化。再也不用手动写日报了！
 
 ---
 
@@ -39,8 +39,8 @@
 ### 1. 安装依赖
 
 ```bash
-git clone https://github.com/yourusername/SumAll.git
-cd SumAll
+git clone https://github.com/weifengtang/AIJourney.git
+cd AIJourney
 pip install -r requirements.txt
 ```
 
@@ -107,7 +107,7 @@ output/
 ## 🗂️ 项目结构
 
 ```
-SumAll/
+AIJourney/
 ├── main.py              # 主程序入口
 ├── config.py            # 配置管理
 ├── requirements.txt     # Python 依赖
@@ -168,7 +168,30 @@ pytest tests/ -v --cov=. --cov-report=html
 
 ---
 
-## 📄 许可证
+## 🎯 已实现功能
+
+- ✅ **插件化采集架构** - 易于扩展的采集器框架
+- ✅ **Claude Code 支持** - 完整实现会话数据采集
+- ✅ **CodeBuddy 支持** - 完整实现会话数据采集  
+- ✅ **VSCode / IDEA 框架** - 基础架构完成，待完善采集逻辑
+- ✅ **双格式输出** - JSON（机器可读）+ Markdown（人类可读）日报
+- ✅ **智能会话摘要** - 自动提取目标和成果
+- ✅ **统计分析** - 工作时长、Token 使用统计
+
+## 🔮 未来规划
+
+AIJourney 的目标是成为**个人全量工作数据的聚合分析平台**，记录你与 AI 协作的每一步：
+
+- ⚪ **更多 AI 助手** - 豆包、DeepSeek、OpenClaw 等主流 AI 编程插件
+- ⚪ **扩展数据源** - 网页 AI 对话、本地对话记录、系统操作日志
+- ⚪ **多维度汇总** - 日报 → 周报 → 年度总结，像复盘总结大会一样回顾成长
+- ⚪ **跨平台支持** - 完整支持 macOS 和 Windows 10 环境
+
+让每一段 AI 协作都被永久记录，让你的成长可视化。
+
+---
+
+## �📄 许可证
 
 [MIT](LICENSE) © 2026
 

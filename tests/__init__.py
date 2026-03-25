@@ -1,3 +1,3 @@
 """
-SumAll 单元测试包
+AIJourney 单元测试包
 """

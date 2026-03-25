@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SumAll - 程序员每日工作会话自动归档框架
+AIJourney - 记录你的 AI 编程成长之旅
 
 主程序入口
 """
@@ -46,7 +46,7 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = None):
     
     # 添加文件输出（如果指定了日志目录）
     if log_dir:
-        log_file = log_dir / f"sumall_{date.today().strftime('%Y%m%d')}.log"
+        log_file = log_dir / f"aijourney_{date.today().strftime('%Y%m%d')}.log"
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setFormatter(logging.Formatter(log_format, date_format))
         logging.root.addHandler(file_handler)
@@ -139,7 +139,7 @@ def generate_report(sessions: List[SessionData], output_dir: Path, output_format
 def main():
     """主函数"""
     # 解析命令行参数
-    parser = argparse.ArgumentParser(description="SumAll - 程序员每日工作会话自动归档框架")
+    parser = argparse.ArgumentParser(description="AIJourney - 记录你的 AI 编程成长之旅")
     parser.add_argument(
         "--date",
         type=str,
@@ -188,7 +188,7 @@ def main():
     
     logger = logging.getLogger(__name__)
     logger.info("=" * 60)
-    logger.info("SumAll 启动")
+    logger.info("AIJourney 启动")
     logger.info(f"目标日期: {target_date}")
     logger.info(f"输出目录: {config.output_dir}")
     logger.info(f"日志级别: {config.log_level}")
@@ -201,7 +201,7 @@ def main():
     generate_report(sessions, config.output_dir, config.output_format, target_date)
     
     logger.info("=" * 60)
-    logger.info("SumAll 执行完成")
+    logger.info("AIJourney 执行完成")
     logger.info("=" * 60)
 
 
