@@ -11,5 +11,9 @@
   "summary": {
     "cache_dir": "./output/.summary_cache",
     "cache_enabled": true
+  },
+  "output": {
+    "output_dir": "./output",
+    "daily_report_dir": "./output"
   }
 }

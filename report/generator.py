@@ -21,15 +21,17 @@ logger = logging.getLogger(__name__)
 class ReportGenerator:
     """报告生成器"""
     
-    def __init__(self, output_dir: Path, settings_path: Optional[Path] = None):
+    def __init__(self, output_dir: Path, daily_report_dir: Optional[Path] = None, settings_path: Optional[Path] = None):
         """
         初始化报告生成器
         
         Args:
             output_dir: 输出目录
+            daily_report_dir: 日报输出目录（如果不指定则使用 output_dir）
             settings_path: settings.json 路径
         """
         self.output_dir = output_dir
+        self.daily_report_dir = daily_report_dir if daily_report_dir else output_dir
         self.summarizer = SessionSummarizer(settings_path)
     
     def generate(self, sessions: List[SessionData], target_date: date, output_format: List[str]):
@@ -43,6 +45,7 @@ class ReportGenerator:
         """
         # 创建输出目录
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.daily_report_dir.mkdir(parents=True, exist_ok=True)
         
         # 如果没有会话数据，不生成空文件
         if not sessions:
@@ -52,15 +55,15 @@ class ReportGenerator:
         # 生成文件名
         date_str = target_date.strftime("%Y%m%d")
         
-        # 生成 JSON 报告
+        # 生成 JSON 报告 - 存到日报目录
         if "json" in output_format:
-            json_file = self.output_dir / f"daily_report_{date_str}.json"
+            json_file = self.daily_report_dir / f"daily_report_{date_str}.json"
             self._generate_json_report(sessions, target_date, json_file)
             logger.info(f"JSON 报告已生成: {json_file}")
         
-        # 生成 Markdown 报告
+        # 生成 Markdown 报告 - 存到日报目录
         if "markdown" in output_format:
-            md_file = self.output_dir / f"daily_report_{date_str}.md"
+            md_file = self.daily_report_dir / f"daily_report_{date_str}.md"
             self._generate_markdown_report(sessions, target_date, md_file)
             logger.info(f"Markdown 报告已生成: {md_file}")
     

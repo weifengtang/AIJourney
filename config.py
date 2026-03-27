@@ -17,6 +17,7 @@ class Config:
     
     # 输出配置
     output_dir: Path = field(default_factory=lambda: Path("./output"))
+    daily_report_dir: Path = field(default_factory=lambda: Path("./output"))
     output_format: List[str] = field(default_factory=lambda: ["json", "markdown"])
     
     # 采集配置
@@ -46,6 +47,7 @@ class Config:
     def __post_init__(self):
         """初始化后处理：确保路径为 Path 对象"""
         self.output_dir = Path(self.output_dir)
+        self.daily_report_dir = Path(self.daily_report_dir)
         self.log_dir = Path(self.log_dir)
         self.claude_code_path = Path(self.claude_code_path)
         self.vscode_history_path = Path(self.vscode_history_path)
@@ -56,6 +58,7 @@ class Config:
         """转换为字典（用于序列化）"""
         return {
             "output_dir": str(self.output_dir),
+            "daily_report_dir": str(self.daily_report_dir),
             "output_format": self.output_format,
             "enabled_collectors": self.enabled_collectors,
             "target_date": self.target_date.isoformat(),
@@ -103,6 +106,7 @@ def set_config(config: Config):
 
 def init_config(
     output_dir: Optional[str] = None,
+    daily_report_dir: Optional[str] = None,
     log_level: Optional[str] = None,
     enabled_collectors: Optional[List[str]] = None,
     target_date: Optional[date] = None,
@@ -112,6 +116,7 @@ def init_config(
     
     Args:
         output_dir: 输出目录
+        daily_report_dir: 日报输出目录
         log_level: 日志级别
         enabled_collectors: 启用的采集器列表
         target_date: 目标日期
@@ -125,6 +130,8 @@ def init_config(
     
     if output_dir:
         _config.output_dir = Path(output_dir)
+    if daily_report_dir:
+        _config.daily_report_dir = Path(daily_report_dir)
     if log_level:
         _config.log_level = log_level
     if enabled_collectors:

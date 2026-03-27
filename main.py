@@ -119,20 +119,21 @@ def collect_all(target_date: date, enabled_collectors: List[str] = None) -> List
     return all_sessions
 
 
-def generate_report(sessions: List[SessionData], output_dir: Path, output_format: List[str], target_date: date):
+def generate_report(sessions: List[SessionData], output_dir: Path, daily_report_dir: Path, output_format: List[str], target_date: date):
     """
     生成报告
     
     Args:
         sessions: 会话数据列表
         output_dir: 输出目录
+        daily_report_dir: 日报输出目录
         output_format: 输出格式列表
         target_date: 目标日期
     """
     logger = logging.getLogger(__name__)
     
     # 使用报告生成器
-    generator = ReportGenerator(output_dir)
+    generator = ReportGenerator(output_dir, daily_report_dir)
     generator.generate(sessions, target_date, output_format)
 
 
@@ -151,6 +152,12 @@ def main():
         type=str,
         default="./output",
         help="输出目录（默认：./output）"
+    )
+    parser.add_argument(
+        "--daily-report-dir",
+        type=str,
+        default=None,
+        help="日报输出目录（默认：同 --output）"
     )
     parser.add_argument(
         "--log-level",
@@ -175,15 +182,35 @@ def main():
     else:
         target_date = date.today()
     
+    # 从 settings.json 读取输出配置
+    from pathlib import Path
+    import json
+    settings_path = Path(__file__).parent / "settings.json"
+    output_dir = args.output
+    daily_report_dir = args.daily_report_dir
+    
+    if settings_path.exists():
+        with open(settings_path, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+            output_config = settings.get("output", {})
+            # 只有当命令行没指定时，才使用 settings.json 中的值
+            if not output_dir or output_dir == "./output":
+                output_dir = output_config.get("output_dir", "./output")
+            if not daily_report_dir:
+                daily_report_dir = output_config.get("daily_report_dir", output_dir)
+    
     # 初始化配置
     init_config(
-        output_dir=args.output,
+        output_dir=output_dir,
+        daily_report_dir=daily_report_dir,
         log_level=args.log_level,
         enabled_collectors=args.collectors,
     )
     
-    # 配置日志
+    # 获取配置
     config = get_config()
+    
+    # 配置日志
     setup_logging(config.log_level, config.log_dir)
     
     logger = logging.getLogger(__name__)
@@ -191,6 +218,7 @@ def main():
     logger.info("AIJourney 启动")
     logger.info(f"目标日期: {target_date}")
     logger.info(f"输出目录: {config.output_dir}")
+    logger.info(f"日报目录: {config.daily_report_dir}")
     logger.info(f"日志级别: {config.log_level}")
     logger.info("=" * 60)
     
@@ -198,7 +226,7 @@ def main():
     sessions = collect_all(target_date, config.enabled_collectors)
     
     # 生成报告
-    generate_report(sessions, config.output_dir, config.output_format, target_date)
+    generate_report(sessions, config.output_dir, config.daily_report_dir, config.output_format, target_date)
     
     logger.info("=" * 60)
     logger.info("AIJourney 执行完成")
