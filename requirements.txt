@@ -16,3 +16,7 @@ mypy>=1.0.0
 
 # 代码风格
 flake8>=5.0.0
+
+# Selenium 自动化（豆包网页版自动化采集器依赖）
+selenium>=4.0.0
+webdriver-manager>=4.0.0

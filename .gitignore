@@ -53,3 +53,8 @@ Thumbs.db
 
 # 保护敏感配置
 settings.json
+
+# 豆包自动化缓存
+.doubao-chrome-profile/
+.doubao-cache/
+.summary-cache/

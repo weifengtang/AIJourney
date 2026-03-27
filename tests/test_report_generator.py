@@ -40,7 +40,7 @@ class TestReportGenerator:
         md_file = self.output_dir / "daily_report_20260325.md"
         assert md_file.exists()
         content = md_file.read_text(encoding='utf-8')
-        assert "2026-03-25" in content
+        assert "2026年03月25日" in content
         assert "Test Session" in content
 
     def test_generate_both_formats(self):
