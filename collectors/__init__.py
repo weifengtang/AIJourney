@@ -20,6 +20,7 @@ from .claude_code import ClaudeCodeCollector
 from .codebuddy import CodeBuddyCollector
 from .vscode import VSCodeCollector
 from .idea import IDEACollector
+from .doubao_selenium import DoubaoSeleniumCollector
 
 __all__ = [
     # 基类
@@ -37,4 +38,5 @@ __all__ = [
     "CodeBuddyCollector",
     "VSCodeCollector",
     "IDEACollector",
+    "DoubaoSeleniumCollector",
 ]
