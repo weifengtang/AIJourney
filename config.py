@@ -22,7 +22,7 @@ class Config:
     
     # 采集配置
     enabled_collectors: List[str] = field(
-        default_factory=lambda: ["claude_code", "codebuddy", "vscode", "idea", "doubao_selenium"]
+        default_factory=lambda: ["claude_code", "codebuddy", "vscode", "idea"]
     )
     target_date: date = field(default_factory=date.today)
     
@@ -43,10 +43,6 @@ class Config:
     codebuddy_storage_path: Path = field(
         default_factory=lambda: Path.home() / "Library" / "Application Support" / "CodeBuddyExtension" / "Data"
     )
-    # Chrome 用户数据目录（用于 Selenium 自动化，保持登录状态）
-    chrome_user_data_dir: Optional[Path] = field(
-        default_factory=lambda: Path.home() / "Library" / "Application Support" / "Google/Chrome"
-    )
     
     def __post_init__(self):
         """初始化后处理：确保路径为 Path 对象"""
@@ -57,8 +53,6 @@ class Config:
         self.vscode_history_path = Path(self.vscode_history_path)
         self.idea_config_path = Path(self.idea_config_path)
         self.codebuddy_storage_path = Path(self.codebuddy_storage_path)
-        if self.chrome_user_data_dir:
-            self.chrome_user_data_dir = Path(self.chrome_user_data_dir)
     
     def to_dict(self) -> dict:
         """转换为字典（用于序列化）"""
@@ -70,7 +64,6 @@ class Config:
             "target_date": self.target_date.isoformat(),
             "log_level": self.log_level,
             "log_dir": str(self.log_dir),
-            "chrome_user_data_dir": str(self.chrome_user_data_dir) if self.chrome_user_data_dir else None,
         }
     
     @classmethod

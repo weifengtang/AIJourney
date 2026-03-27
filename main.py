@@ -188,6 +188,7 @@ def main():
     settings_path = Path(__file__).parent / "settings.json"
     output_dir = args.output
     daily_report_dir = args.daily_report_dir
+    collectors = args.collectors
     
     if settings_path.exists():
         with open(settings_path, 'r', encoding='utf-8') as f:
@@ -198,6 +199,11 @@ def main():
                 output_dir = output_config.get("output_dir", "./output")
             if not daily_report_dir:
                 daily_report_dir = output_config.get("daily_report_dir", output_dir)
+            # 采集器配置优先级：命令行 > settings.json > 默认
+            if collectors is None:
+                settings_collectors = settings.get("collectors")
+                if isinstance(settings_collectors, list) and settings_collectors:
+                    collectors = settings_collectors
     
     # 初始化配置
     init_config(

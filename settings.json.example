@@ -15,5 +15,11 @@
   "output": {
     "output_dir": "./output",
     "daily_report_dir": "./output"
-  }
+  },
+  "collectors": [
+    "claude_code",
+    "codebuddy",
+    "vscode",
+    "idea"
+  ]
 }
