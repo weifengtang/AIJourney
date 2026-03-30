@@ -8,6 +8,8 @@
 
 自动采集多个 AI 编程工具的会话数据，生成结构化的工作日报。让每一段 AI 协作都被永久记录，让你的成长可视化。再也不用手动写日报了！
 
+**核心价值**：在 AI 编程时代，成为"AI 对话的 Git"，让每一次 AI 协作都被永久记录、可追溯、可复用、个人知识沉淀。
+
 ---
 
 ## 🧩 开发方式
@@ -78,6 +80,11 @@ python main.py
 # 指定日期（格式 YYYY-MM-DD）
 python main.py --date 2026-03-25
 
+# 指定报告周期（daily/weekly/monthly/yearly）
+python main.py --period weekly
+python main.py --period monthly
+python main.py --period yearly
+
 # 指定输出目录
 python main.py --output ./my_reports
 
@@ -104,6 +111,7 @@ cp settings.json.example settings.json
 |--------|-----------|----------|------|
 | **Claude Code** | `~/.claude/` | ✅ 完整实现 | macOS |
 | **CodeBuddy** | `~/Library/Application Support/CodeBuddyExtension/Data/` | ✅ 完整实现 | macOS |
+| **豆包 Selenium** | `~/Library/Application Support/CodeBuddyExtension/Data/` | ✅ 完整实现 | macOS |
 | **VSCode** | `~/Library/Application Support/Code/User/History/` | 🏗️ 框架完成 | macOS |
 | **IDEA** | `~/Library/Application Support/JetBrains/` | 🏗️ 框架完成 | macOS |
 
@@ -116,8 +124,18 @@ cp settings.json.example settings.json
 输出目录结构：
 ```
 output/
-├── daily_report_20260325.json    # 结构化数据
-└── daily_report_20260325.md      # 可读日报
+├── daily/                        # 日报
+│   ├── daily_report_20260325.json
+│   └── daily_report_20260325.md
+├── weekly/                       # 周报
+│   ├── weekly_report_20260324-0330.json
+│   └── weekly_report_20260324-0330.md
+├── monthly/                      # 月报
+│   ├── monthly_report_202603.json
+│   └── monthly_report_202603.md
+└── yearly/                       # 年报
+    ├── yearly_report_2026.json
+    └── yearly_report_2026.md
 ```
 
 ### Markdown 日报包含：
@@ -141,12 +159,14 @@ AIJourney/
 │   ├── base.py          # 采集器基类 + 数据结构
 │   ├── claude_code.py   # Claude Code 采集器
 │   ├── codebuddy.py     # CodeBuddy 采集器
+│   ├── doubao_selenium.py # 豆包 Selenium 采集器
 │   ├── vscode.py        # VSCode 采集器
 │   └── idea.py          # IDEA 采集器
 ├── report/              # 报告生成模块
 │   ├── __init__.py
-│   ├── generator.py     # 报告生成器
-│   └── summarizer.py   # 会话摘要生成
+│   ├── generator.py     # 多周期报告生成器
+│   ├── period.py        # 报告周期枚举与日期计算
+│   └── summarizer.py   # 会话摘要生成器
 ├── tests/               # 单元测试
 │   ├── test_*.py        # 各模块测试
 ├── spec/                # 需求文档（AI 协作开发）
@@ -197,20 +217,25 @@ pytest tests/ -v --cov=. --cov-report=html
 
 - ✅ **插件化采集架构** - 易于扩展的采集器框架
 - ✅ **Claude Code 支持** - 完整实现会话数据采集
-- ✅ **CodeBuddy 支持** - 完整实现会话数据采集  
+- ✅ **CodeBuddy 支持** - 完整实现会话数据采集
+- ✅ **豆包 Selenium 支持** - 完整实现会话数据采集
 - ✅ **VSCode / IDEA 框架** - 基础架构完成，待完善采集逻辑
-- ✅ **双格式输出** - JSON（机器可读）+ Markdown（人类可读）日报
-- ✅ **智能会话摘要** - 自动提取目标和成果
+- ✅ **多周期报告** - 支持日报、周报、月报、年报生成
+- ✅ **双格式输出** - JSON（机器可读）+ Markdown（人类可读）
+- ✅ **智能会话摘要** - 支持 LLM 智能摘要和规则提取两种模式
 - ✅ **统计分析** - 工作时长、Token 使用统计
 
 ## 🔮 未来规划
 
 AIJourney 的目标是成为**个人全量工作数据的聚合分析平台**，记录你与 AI 协作的每一步：
 
-- ⚪ **更多 AI 助手** - 豆包、DeepSeek、OpenClaw 等主流 AI 编程插件
+- ⚪ **更多 AI 助手** - DeepSeek、OpenClaw 等主流 AI 编程插件
 - ⚪ **扩展数据源** - 网页 AI 对话、本地对话记录、系统操作日志
-- ⚪ **多维度汇总** - 日报 → 周报 → 年度总结，像复盘总结大会一样回顾成长
+- ⚪ **VSCode / IDEA 完整实现** - 完善采集逻辑，支持完整数据采集
+- ⚪ **增量采集** - 会话 ID 去重，避免重复采集
+- ⚪ **敏感信息过滤** - 自动脱敏 API Key 等敏感信息
 - ⚪ **跨平台支持** - 完整支持 macOS 和 Windows 10 环境
+- ⚪ **定时任务** - macOS launchd / crontab 自动定时生成报告
 
 让每一段 AI 协作都被永久记录，让你的成长可视化。
 

@@ -1,11 +1,11 @@
 """
 报告生成器
 
-生成完整的日报，符合规范格式
+生成完整的日报、周报、月报、年报
 """
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional
 from collections import defaultdict
@@ -13,13 +13,14 @@ import logging
 
 from collectors.base import SessionData
 from report.summarizer import SessionSummarizer
+from report.period import ReportPeriod
 
 
 logger = logging.getLogger(__name__)
 
 
 class ReportGenerator:
-    """报告生成器"""
+    """报告生成器（支持日/周/月/年报）"""
     
     def __init__(self, output_dir: Path, daily_report_dir: Optional[Path] = None, settings_path: Optional[Path] = None):
         """
@@ -34,9 +35,36 @@ class ReportGenerator:
         self.daily_report_dir = daily_report_dir if daily_report_dir else output_dir
         self.summarizer = SessionSummarizer(settings_path)
     
+    def generate_by_period(self, sessions: List[SessionData], target_date: date, 
+                          period: ReportPeriod, output_format: List[str]):
+        """
+        根据周期生成报告
+        
+        Args:
+            sessions: 会话数据列表
+            target_date: 目标日期
+            period: 报告周期（日/周/月/年）
+            output_format: 输出格式列表
+        """
+        # 创建输出目录
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.daily_report_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 根据周期选择生成方法
+        if period == ReportPeriod.DAILY:
+            self.generate(sessions, target_date, output_format)
+        elif period == ReportPeriod.WEEKLY:
+            self._generate_weekly_report(target_date, output_format)
+        elif period == ReportPeriod.MONTHLY:
+            self._generate_monthly_report(target_date, output_format)
+        elif period == ReportPeriod.YEARLY:
+            self._generate_yearly_report(target_date, output_format)
+        else:
+            raise ValueError(f"不支持的报告周期: {period}")
+    
     def generate(self, sessions: List[SessionData], target_date: date, output_format: List[str]):
         """
-        生成报告
+        生成日报
         
         Args:
             sessions: 会话数据列表
@@ -549,3 +577,514 @@ class ReportGenerator:
         ])
         
         return lines
+    
+    def _generate_weekly_report(self, target_date: date, output_format: List[str]):
+        """
+        生成周报
+        
+        Args:
+            target_date: 目标日期
+            output_format: 输出格式列表
+        """
+        logger.info(f"开始生成周报: {target_date}")
+        
+        # 获取本周日期范围
+        period = ReportPeriod.WEEKLY
+        start_date, end_date = period.get_date_range(target_date)
+        
+        # 查找本周的所有日报 JSON 文件
+        weekly_dir = self.daily_report_dir
+        daily_reports = []
+        
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime("%Y%m%d")
+            json_file = weekly_dir / f"daily_report_{date_str}.json"
+            if json_file.exists():
+                try:
+                    with open(json_file, 'r', encoding='utf-8') as f:
+                        daily_reports.append(json.load(f))
+                except Exception as e:
+                    logger.warning(f"读取日报失败 {json_file}: {e}")
+            current_date += timedelta(days=1)
+        
+        if not daily_reports:
+            logger.info(f"本周没有日报数据，跳过生成周报")
+            return
+        
+        # 汇总数据
+        weekly_data = self._aggregate_period_data(daily_reports, start_date, end_date)
+        
+        # 生成文件名
+        filename_prefix = period.get_filename_prefix(target_date)
+        
+        # 生成 Markdown 周报
+        if "markdown" in output_format:
+            weekly_dir = self.output_dir / "weekly"
+            weekly_dir.mkdir(parents=True, exist_ok=True)
+            md_file = weekly_dir / f"weekly_report_{filename_prefix}.md"
+            self._generate_weekly_markdown(weekly_data, md_file)
+            logger.info(f"周报已生成: {md_file}")
+    
+    def _generate_monthly_report(self, target_date: date, output_format: List[str]):
+        """
+        生成月报
+        
+        Args:
+            target_date: 目标日期
+            output_format: 输出格式列表
+        """
+        logger.info(f"开始生成月报: {target_date}")
+        
+        # 获取本月日期范围
+        period = ReportPeriod.MONTHLY
+        start_date, end_date = period.get_date_range(target_date)
+        
+        # 查找本月的所有周报 JSON 文件（如果有）或日报
+        monthly_dir = self.output_dir / "weekly"
+        weekly_reports = []
+        
+        # 按周遍历
+        current_date = start_date
+        while current_date <= end_date:
+            week_start = current_date - timedelta(days=current_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            
+            # 检查周报是否存在
+            filename_prefix = f"{week_start.strftime('%Y%m%d')}-{week_end.strftime('%m%d')}"
+            json_file = monthly_dir / f"weekly_report_{filename_prefix}.json"
+            
+            if json_file.exists():
+                try:
+                    with open(json_file, 'r', encoding='utf-8') as f:
+                        weekly_reports.append(json.load(f))
+                except Exception as e:
+                    logger.warning(f"读取周报失败 {json_file}: {e}")
+            
+            # 移动到下一周
+            current_date = week_end + timedelta(days=1)
+        
+        # 如果没有周报，则从日报汇总
+        if not weekly_reports:
+            daily_reports = []
+            current_date = start_date
+            while current_date <= end_date:
+                date_str = current_date.strftime("%Y%m%d")
+                json_file = self.daily_report_dir / f"daily_report_{date_str}.json"
+                if json_file.exists():
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            daily_reports.append(json.load(f))
+                    except Exception as e:
+                        logger.warning(f"读取日报失败 {json_file}: {e}")
+                current_date += timedelta(days=1)
+            
+            if not daily_reports:
+                logger.info(f"本月没有数据，跳过生成月报")
+                return
+            
+            monthly_data = self._aggregate_period_data(daily_reports, start_date, end_date)
+        else:
+            monthly_data = self._aggregate_period_data(weekly_reports, start_date, end_date)
+        
+        # 生成文件名
+        filename_prefix = period.get_filename_prefix(target_date)
+        
+        # 生成 Markdown 月报
+        if "markdown" in output_format:
+            monthly_dir = self.output_dir / "monthly"
+            monthly_dir.mkdir(parents=True, exist_ok=True)
+            md_file = monthly_dir / f"monthly_report_{filename_prefix}.md"
+            self._generate_monthly_markdown(monthly_data, md_file)
+            logger.info(f"月报已生成: {md_file}")
+    
+    def _generate_yearly_report(self, target_date: date, output_format: List[str]):
+        """
+        生成年报
+        
+        Args:
+            target_date: 目标日期
+            output_format: 输出格式列表
+        """
+        logger.info(f"开始生成年报: {target_date}")
+        
+        # 获取本年日期范围
+        period = ReportPeriod.YEARLY
+        start_date, end_date = period.get_date_range(target_date)
+        
+        # 查找本年的所有月报 JSON 文件（如果有）或周报
+        yearly_dir = self.output_dir / "monthly"
+        monthly_reports = []
+        
+        # 按月遍历
+        current_date = start_date
+        while current_date <= end_date:
+            filename_prefix = current_date.strftime("%Y%m")
+            json_file = yearly_dir / f"monthly_report_{filename_prefix}.json"
+            
+            if json_file.exists():
+                try:
+                    with open(json_file, 'r', encoding='utf-8') as f:
+                        monthly_reports.append(json.load(f))
+                except Exception as e:
+                    logger.warning(f"读取月报失败 {json_file}: {e}")
+            
+            # 移动到下一月
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1, day=1)
+        
+        # 如果没有月报，则从周报或日报汇总
+        if not monthly_reports:
+            weekly_reports = []
+            current_date = start_date
+            while current_date <= end_date:
+                week_start = current_date - timedelta(days=current_date.weekday())
+                week_end = week_start + timedelta(days=6)
+                
+                filename_prefix = f"{week_start.strftime('%Y%m%d')}-{week_end.strftime('%m%d')}"
+                json_file = self.output_dir / "weekly" / f"weekly_report_{filename_prefix}.json"
+                
+                if json_file.exists():
+                    try:
+                        with open(json_file, 'r', encoding='utf-8') as f:
+                            weekly_reports.append(json.load(f))
+                    except Exception as e:
+                        logger.warning(f"读取周报失败 {json_file}: {e}")
+                
+                current_date = week_end + timedelta(days=1)
+            
+            if not weekly_reports:
+                logger.info(f"本年没有数据，跳过生成年报")
+                return
+            
+            yearly_data = self._aggregate_period_data(weekly_reports, start_date, end_date)
+        else:
+            yearly_data = self._aggregate_period_data(monthly_reports, start_date, end_date)
+        
+        # 生成文件名
+        filename_prefix = period.get_filename_prefix(target_date)
+        
+        # 生成 Markdown 年报
+        if "markdown" in output_format:
+            yearly_dir = self.output_dir / "yearly"
+            yearly_dir.mkdir(parents=True, exist_ok=True)
+            md_file = yearly_dir / f"yearly_report_{filename_prefix}.md"
+            self._generate_yearly_markdown(yearly_data, md_file)
+            logger.info(f"年报已生成: {md_file}")
+    
+    def _aggregate_period_data(self, reports: List[Dict], start_date: date, end_date: date) -> Dict:
+        """
+        汇总周期数据
+        
+        Args:
+            reports: 报告数据列表
+            start_date: 开始日期
+            end_date: 结束日期
+        
+        Returns:
+            汇总数据
+        """
+        # 汇总统计
+        total_sessions = 0
+        total_messages = 0
+        total_tokens_input = 0
+        total_tokens_output = 0
+        total_files_modified = 0
+        sources = set()
+        projects = set()
+        
+        # 汇总会话
+        all_sessions = []
+        
+        for report in reports:
+            stats = report.get('stats', {})
+            total_sessions += stats.get('total_sessions', 0)
+            total_messages += stats.get('total_messages', 0)
+            total_tokens_input += stats.get('total_tokens_input', 0)
+            total_tokens_output += stats.get('total_tokens_output', 0)
+            total_files_modified += stats.get('total_files_modified', 0)
+            
+            sources.update(stats.get('sources', []))
+            projects.update(stats.get('projects', []))
+            
+            # 收集会话数据
+            sessions = report.get('sessions', [])
+            all_sessions.extend(sessions)
+        
+        return {
+            "meta": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "generated_at": datetime.now().isoformat(),
+                "version": "2.1.0",
+            },
+            "stats": {
+                "total_sessions": total_sessions,
+                "total_messages": total_messages,
+                "total_tokens_input": total_tokens_input,
+                "total_tokens_output": total_tokens_output,
+                "total_files_modified": total_files_modified,
+                "sources": list(sources),
+                "projects": list(projects),
+            },
+            "sessions": all_sessions,
+            "reports": reports,
+        }
+    
+    def _generate_weekly_markdown(self, data: Dict, output_file: Path):
+        """
+        生成周报 Markdown
+        
+        Args:
+            data: 周报数据
+            output_file: 输出文件路径
+        """
+        lines = []
+        
+        # 标题
+        start_date = date.fromisoformat(data['meta']['start_date'])
+        end_date = date.fromisoformat(data['meta']['end_date'])
+        week_num = start_date.isocalendar()[1]
+        
+        lines.extend([
+            f"# 本周工作总结 - {start_date.strftime('%Y年')} 第{week_num}周",
+            "",
+            f"> 时间范围：{start_date.strftime('%m月%d日')} - {end_date.strftime('%m月%d日')}",
+            f"> 报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "---",
+            "",
+        ])
+        
+        # 工作概览
+        stats = data['stats']
+        lines.extend([
+            "## 📊 本周概览",
+            "",
+            "### 核心指标",
+            "",
+            "| 指标 | 数值 |",
+            "|------|------|",
+            f"| AI 协作会话 | {stats['total_sessions']} 次 |",
+            f"| 消息总数 | {stats['total_messages']} 条 |",
+            f"| Token 总量 | {stats['total_tokens_input'] + stats['total_tokens_output']:,} |",
+            f"| 编辑文件数 | {stats['total_files_modified']} |",
+            "",
+        ])
+        
+        # 每日汇总
+        lines.extend([
+            "## 📅 每日汇总",
+            "",
+        ])
+        
+        for report in data['reports']:
+            report_date = date.fromisoformat(report['meta']['date'])
+            report_stats = report['stats']
+            lines.append(f"### {report_date.strftime('%m月%d日')}（{['一','二','三','四','五','六','日'][report_date.weekday()]}）")
+            lines.append("")
+            lines.append(f"- 会话数：{report_stats['total_sessions']} 次")
+            lines.append(f"- 消息数：{report_stats['total_messages']} 条")
+            lines.append(f"- Token：{report_stats['total_tokens_input'] + report_stats['total_tokens_output']:,}")
+            lines.append("")
+        
+        # 本周成果
+        lines.extend([
+            "## 🎯 本周成果",
+            "",
+            "- _请手动填写_",
+            "",
+        ])
+        
+        # 下周计划
+        lines.extend([
+            "## 📝 下周计划",
+            "",
+            "- _请手动填写_",
+            "",
+            "---",
+            "",
+            "**报告结束**",
+        ])
+        
+        # 写入文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+    
+    def _generate_monthly_markdown(self, data: Dict, output_file: Path):
+        """
+        生成月报 Markdown
+        
+        Args:
+            data: 月报数据
+            output_file: 输出文件路径
+        """
+        lines = []
+        
+        # 标题
+        start_date = date.fromisoformat(data['meta']['start_date'])
+        
+        lines.extend([
+            f"# 月度工作总结 - {start_date.strftime('%Y年%m月')}",
+            "",
+            f"> 报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "---",
+            "",
+        ])
+        
+        # 工作概览
+        stats = data['stats']
+        lines.extend([
+            "## 📊 月度概览",
+            "",
+            "### 核心指标",
+            "",
+            "| 指标 | 数值 |",
+            "|------|------|",
+            f"| AI 协作会话 | {stats['total_sessions']} 次 |",
+            f"| 消息总数 | {stats['total_messages']} 条 |",
+            f"| Token 总量 | {stats['total_tokens_input'] + stats['total_tokens_output']:,} |",
+            f"| 编辑文件数 | {stats['total_files_modified']} |",
+            "",
+        ])
+        
+        # 每周汇总
+        lines.extend([
+            "## 📅 每周汇总",
+            "",
+        ])
+        
+        for report in data['reports']:
+            if 'start_date' in report['meta']:
+                report_start = date.fromisoformat(report['meta']['start_date'])
+                report_end = date.fromisoformat(report['meta']['end_date'])
+                week_num = report_start.isocalendar()[1]
+                report_stats = report['stats']
+                lines.append(f"### 第{week_num}周（{report_start.strftime('%m%d')}-{report_end.strftime('%m%d')}）")
+                lines.append("")
+                lines.append(f"- 会话数：{report_stats['total_sessions']} 次")
+                lines.append(f"- 消息数：{report_stats['total_messages']} 条")
+                lines.append(f"- Token：{report_stats['total_tokens_input'] + report_stats['total_tokens_output']:,}")
+                lines.append("")
+            else:
+                report_date = date.fromisoformat(report['meta']['date'])
+                report_stats = report['stats']
+                lines.append(f"### {report_date.strftime('%m月%d日')}")
+                lines.append("")
+                lines.append(f"- 会话数：{report_stats['total_sessions']} 次")
+                lines.append(f"- 消息数：{report_stats['total_messages']} 条")
+                lines.append(f"- Token：{report_stats['total_tokens_input'] + report_stats['total_tokens_output']:,}")
+                lines.append("")
+        
+        # 月度成果
+        lines.extend([
+            "## 🎯 月度成果",
+            "",
+            "- _请手动填写_",
+            "",
+        ])
+        
+        # 下月计划
+        lines.extend([
+            "## 📝 下月计划",
+            "",
+            "- _请手动填写_",
+            "",
+            "---",
+            "",
+            "**报告结束**",
+        ])
+        
+        # 写入文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+    
+    def _generate_yearly_markdown(self, data: Dict, output_file: Path):
+        """
+        生成年报 Markdown
+        
+        Args:
+            data: 年报数据
+            output_file: 输出文件路径
+        """
+        lines = []
+        
+        # 标题
+        start_date = date.fromisoformat(data['meta']['start_date'])
+        
+        lines.extend([
+            f"# 年度工作总结 - {start_date.strftime('%Y年')}",
+            "",
+            f"> 报告生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+            "---",
+            "",
+        ])
+        
+        # 工作概览
+        stats = data['stats']
+        lines.extend([
+            "## 📊 年度概览",
+            "",
+            "### 核心指标",
+            "",
+            "| 指标 | 数值 |",
+            "|------|------|",
+            f"| AI 协作会话 | {stats['total_sessions']} 次 |",
+            f"| 消息总数 | {stats['total_messages']} 条 |",
+            f"| Token 总量 | {stats['total_tokens_input'] + stats['total_tokens_output']:,} |",
+            f"| 编辑文件数 | {stats['total_files_modified']} |",
+            "",
+        ])
+        
+        # 每月汇总
+        lines.extend([
+            "## 📅 每月汇总",
+            "",
+        ])
+        
+        for report in data['reports']:
+            if 'start_date' in report['meta']:
+                report_start = date.fromisoformat(report['meta']['start_date'])
+                report_stats = report['stats']
+                lines.append(f"### {report_start.strftime('%m月')}")
+                lines.append("")
+                lines.append(f"- 会话数：{report_stats['total_sessions']} 次")
+                lines.append(f"- 消息数：{report_stats['total_messages']} 条")
+                lines.append(f"- Token：{report_stats['total_tokens_input'] + report_stats['total_tokens_output']:,}")
+                lines.append("")
+            else:
+                report_date = date.fromisoformat(report['meta']['date'])
+                report_stats = report['stats']
+                lines.append(f"### {report_date.strftime('%m月%d日')}")
+                lines.append("")
+                lines.append(f"- 会话数：{report_stats['total_sessions']} 次")
+                lines.append(f"- 消息数：{report_stats['total_messages']} 条")
+                lines.append(f"- Token：{report_stats['total_tokens_input'] + report_stats['total_tokens_output']:,}")
+                lines.append("")
+        
+        # 年度成果
+        lines.extend([
+            "## 🎯 年度成果",
+            "",
+            "- _请手动填写_",
+            "",
+        ])
+        
+        # 明年展望
+        lines.extend([
+            "## 🚀 明年展望",
+            "",
+            "- _请手动填写_",
+            "",
+            "---",
+            "",
+            "**报告结束**",
+        ])
+        
+        # 写入文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))

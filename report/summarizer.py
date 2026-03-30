@@ -179,63 +179,62 @@ class SessionSummarizer:
         # 准备 prompt
         prompt = self.SUMMARY_PROMPT.format(messages=messages_content)
         
-        try:
-            # 调用 API - 最多重试 2 次
-            api_key = llm_config.get("api_key", "")
-            api_base_url = llm_config.get("api_base_url", "")
-            model = llm_config.get("model", "ark-code-latest")
-            max_tokens = llm_config.get("max_tokens", 1000)
-            timeout = llm_config.get("timeout", 120)  # 增加超时到120秒
-            
-            if not api_key:
-                logger.warning("[summarizer] API key 未配置，使用规则提取")
-                return self._summarize_with_rules(session)
-            
-            # 重试机制
-            last_err = None
-            for retry in range(3):
-                try:
-                    response = requests.post(
-                        f"{api_base_url}/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": model,
-                            "max_tokens": max_tokens,
-                            "messages": [{"role": "user", "content": prompt}]
-                        },
-                        timeout=timeout
-                    )
-                    
-                    if response.status_code == 200:
-                        data = response.json()
-                        content = data["choices"][0]["message"]["content"]
-                        
-                        # 解析 JSON
-                        summary_data = self._parse_llm_response(content)
-                        
-                        return SessionSummary(
-                            goal=summary_data.get("goal", ""),
-                            key_questions=summary_data.get("key_questions", []),
-                            achievements=summary_data.get("achievements", []),
-                            files_modified=summary_data.get("files_modified", []),
-                            tech_points=summary_data.get("tech_points", []),
-                            summary_method="llm"
-                        )
-                    else:
-                        logger.warning(f"[summarizer] LLM API 调用失败 (尝试 {retry+1}/3): {response.status_code}")
-                        last_err = Exception(f"HTTP {response.status_code}")
-                        time.sleep(2)
-                except Exception as e:
-                    logger.warning(f"[summarizer] LLM 调用异常 (尝试 {retry+1}/3): {e}")
-                    last_err = e
-                    time.sleep(2)
-            
-            # 所有重试都失败，回退到规则提取
-            logger.error(f"[summarizer] 所有重试都失败，回退到规则提取: {last_err}")
+        # 调用 API - 最多重试 2 次
+        api_key = llm_config.get("api_key", "")
+        api_base_url = llm_config.get("api_base_url", "")
+        model = llm_config.get("model", "ark-code-latest")
+        max_tokens = llm_config.get("max_tokens", 1000)
+        timeout = llm_config.get("timeout", 120)  # 增加超时到120秒
+        
+        if not api_key:
+            logger.warning("[summarizer] API key 未配置，使用规则提取")
             return self._summarize_with_rules(session)
+        
+        # 重试机制
+        last_err = None
+        for retry in range(3):
+            try:
+                response = requests.post(
+                    f"{api_base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": max_tokens,
+                        "messages": [{"role": "user", "content": prompt}]
+                    },
+                    timeout=timeout
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    content = data["choices"][0]["message"]["content"]
+                    
+                    # 解析 JSON
+                    summary_data = self._parse_llm_response(content)
+                    
+                    return SessionSummary(
+                        goal=summary_data.get("goal", ""),
+                        key_questions=summary_data.get("key_questions", []),
+                        achievements=summary_data.get("achievements", []),
+                        files_modified=summary_data.get("files_modified", []),
+                        tech_points=summary_data.get("tech_points", []),
+                        summary_method="llm"
+                    )
+                else:
+                    logger.warning(f"[summarizer] LLM API 调用失败 (尝试 {retry+1}/3): {response.status_code}")
+                    last_err = Exception(f"HTTP {response.status_code}")
+                    time.sleep(2)
+            except Exception as e:
+                logger.warning(f"[summarizer] LLM 调用异常 (尝试 {retry+1}/3): {e}")
+                last_err = e
+                time.sleep(2)
+        
+        # 所有重试都失败，回退到规则提取
+        logger.error(f"[summarizer] 所有重试都失败，回退到规则提取: {last_err}")
+        return self._summarize_with_rules(session)
     
     def _parse_llm_response(self, content: str) -> dict:
         """解析 LLM 响应"""
@@ -307,38 +306,3 @@ class SessionSummarizer:
             content = msg.content[:500]  # 限制长度
             lines.append(f"[{i}] {role}: {content}")
         return "\n".join(lines)
-
-    def _get_cache_key(self, session: SessionData) -> str:
-        """生成缓存key"""
-        import hashlib
-        content = f"{session.session_id}_{session.title}"
-        return hashlib.md5(content.encode('utf-8')).hexdigest()
-
-    def _get_cached_summary(self, cache_key: str) -> Optional[SessionSummary]:
-        """从缓存获取摘要"""
-        cache_dir = Path("./.summary-cache")
-        cache_dir.mkdir(exist_ok=True)
-        cache_file = cache_dir / f"{cache_key}.json"
-        if cache_file.exists():
-            try:
-                with open(cache_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return SessionSummary(
-                        goal=data.get("goal", ""),
-                        key_questions=data.get("key_questions", []),
-                        achievements=data.get("achievements", []),
-                        files_modified=data.get("files_modified", []),
-                        tech_points=data.get("tech_points", []),
-                        summary_method=data.get("summary_method", "cache")
-                    )
-            except:
-                pass
-        return None
-
-    def _save_cached_summary(self, cache_key: str, summary: SessionSummary):
-        """保存摘要到缓存"""
-        cache_dir = Path("./.summary-cache")
-        cache_dir.mkdir(exist_ok=True)
-        cache_file = cache_dir / f"{cache_key}.json"
-        with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump(summary.to_dict(), f, ensure_ascii=False, indent=2)

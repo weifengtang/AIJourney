@@ -15,6 +15,7 @@ from typing import List
 from config import init_config, get_config
 from collectors import get_all_collector_instances, SessionData
 from report import ReportGenerator
+from report.period import ReportPeriod
 
 
 def setup_logging(log_level: str = "INFO", log_dir: Path = None):
@@ -119,7 +120,8 @@ def collect_all(target_date: date, enabled_collectors: List[str] = None) -> List
     return all_sessions
 
 
-def generate_report(sessions: List[SessionData], output_dir: Path, daily_report_dir: Path, output_format: List[str], target_date: date):
+def generate_report(sessions: List[SessionData], output_dir: Path, daily_report_dir: Path, 
+                   output_format: List[str], target_date: date, report_period: str = "daily"):
     """
     生成报告
     
@@ -129,12 +131,18 @@ def generate_report(sessions: List[SessionData], output_dir: Path, daily_report_
         daily_report_dir: 日报输出目录
         output_format: 输出格式列表
         target_date: 目标日期
+        report_period: 报告周期（daily/weekly/monthly/yearly）
     """
     logger = logging.getLogger(__name__)
     
     # 使用报告生成器
     generator = ReportGenerator(output_dir, daily_report_dir)
-    generator.generate(sessions, target_date, output_format)
+    
+    # 解析报告周期
+    period = ReportPeriod.from_string(report_period)
+    
+    # 根据周期生成报告
+    generator.generate_by_period(sessions, target_date, period, output_format)
 
 
 def main():
@@ -173,6 +181,13 @@ def main():
         default=None,
         help="启用的采集器（默认：全部）"
     )
+    parser.add_argument(
+        "--period",
+        type=str,
+        default="daily",
+        choices=["daily", "weekly", "monthly", "yearly", "day", "week", "month", "year"],
+        help="报告周期（默认：daily）"
+    )
     
     args = parser.parse_args()
     
@@ -189,6 +204,7 @@ def main():
     output_dir = args.output
     daily_report_dir = args.daily_report_dir
     collectors = args.collectors
+    report_period = args.period
     
     if settings_path.exists():
         with open(settings_path, 'r', encoding='utf-8') as f:
@@ -204,6 +220,11 @@ def main():
                 settings_collectors = settings.get("collectors")
                 if isinstance(settings_collectors, list) and settings_collectors:
                     collectors = settings_collectors
+            # 报告周期配置优先级：命令行 > settings.json > 默认
+            if report_period == "daily":
+                settings_period = settings.get("report_period")
+                if settings_period:
+                    report_period = settings_period
     
     # 初始化配置
     init_config(
@@ -211,6 +232,8 @@ def main():
         daily_report_dir=daily_report_dir,
         log_level=args.log_level,
         enabled_collectors=args.collectors,
+        target_date=target_date,
+        report_period=report_period,
     )
     
     # 获取配置
@@ -232,7 +255,8 @@ def main():
     sessions = collect_all(target_date, config.enabled_collectors)
     
     # 生成报告
-    generate_report(sessions, config.output_dir, config.daily_report_dir, config.output_format, target_date)
+    generate_report(sessions, config.output_dir, config.daily_report_dir, 
+                   config.output_format, target_date, config.report_period)
     
     logger.info("=" * 60)
     logger.info("AIJourney 执行完成")

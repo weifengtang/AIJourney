@@ -20,9 +20,12 @@ class Config:
     daily_report_dir: Path = field(default_factory=lambda: Path("./output"))
     output_format: List[str] = field(default_factory=lambda: ["json", "markdown"])
     
+    # 报告周期配置
+    report_period: str = "daily"  # daily, weekly, monthly, yearly
+    
     # 采集配置
     enabled_collectors: List[str] = field(
-        default_factory=lambda: ["claude_code", "codebuddy", "vscode", "idea"]
+        default_factory=lambda: ["claude_code", "codebuddy", "vscode", "idea", "doubao_selenium"]
     )
     target_date: date = field(default_factory=date.today)
     
@@ -60,6 +63,7 @@ class Config:
             "output_dir": str(self.output_dir),
             "daily_report_dir": str(self.daily_report_dir),
             "output_format": self.output_format,
+            "report_period": self.report_period,
             "enabled_collectors": self.enabled_collectors,
             "target_date": self.target_date.isoformat(),
             "log_level": self.log_level,
@@ -110,6 +114,7 @@ def init_config(
     log_level: Optional[str] = None,
     enabled_collectors: Optional[List[str]] = None,
     target_date: Optional[date] = None,
+    report_period: Optional[str] = None,
 ) -> Config:
     """
     初始化配置
@@ -120,6 +125,7 @@ def init_config(
         log_level: 日志级别
         enabled_collectors: 启用的采集器列表
         target_date: 目标日期
+        report_period: 报告周期（daily/weekly/monthly/yearly）
     
     Returns:
         配置实例
@@ -138,5 +144,7 @@ def init_config(
         _config.enabled_collectors = enabled_collectors
     if target_date:
         _config.target_date = target_date
+    if report_period:
+        _config.report_period = report_period
     
     return _config
