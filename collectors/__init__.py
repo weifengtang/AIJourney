@@ -21,6 +21,8 @@ from .codebuddy import CodeBuddyCollector
 from .vscode import VSCodeCollector
 from .idea import IDEACollector
 from .doubao_selenium import DoubaoSeleniumCollector
+from .shell_history import ShellHistoryCollector
+from .git_commits import GitCommitsCollector
 
 __all__ = [
     # 基类
@@ -39,4 +41,6 @@ __all__ = [
     "VSCodeCollector",
     "IDEACollector",
     "DoubaoSeleniumCollector",
+    "ShellHistoryCollector",
+    "GitCommitsCollector",
 ]

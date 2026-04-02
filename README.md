@@ -114,8 +114,10 @@ cp settings.json.example settings.json
 | **豆包 Selenium** | `~/Library/Application Support/CodeBuddyExtension/Data/` | ✅ 完整实现 | macOS |
 | **VSCode** | `~/Library/Application Support/Code/User/History/` | 🏗️ 框架完成 | macOS |
 | **IDEA** | `~/Library/Application Support/JetBrains/` | 🏗️ 框架完成 | macOS |
+| **Shell History** | `~/.zsh_history` / `~/.bash_history` / PSReadLine | ✅ 完整实现 | macOS / Windows / Linux |
+| **Git Commits** | 自动扫描 `~/work`、`~/projects` 等目录 | ✅ 完整实现 | macOS / Windows / Linux |
 
-> 🔍 **计划中**: Windows/Linux 路径适配，System 活动采集
+> 🔍 **计划中**: VSCode / IDEA 完整实现，System 活动采集
 
 ---
 
@@ -161,7 +163,9 @@ AIJourney/
 │   ├── codebuddy.py     # CodeBuddy 采集器
 │   ├── doubao_selenium.py # 豆包 Selenium 采集器
 │   ├── vscode.py        # VSCode 采集器
-│   └── idea.py          # IDEA 采集器
+│   ├── idea.py          # IDEA 采集器
+│   ├── shell_history.py # Shell 历史采集器
+│   └── git_commits.py   # Git 提交记录采集器
 ├── report/              # 报告生成模块
 │   ├── __init__.py
 │   ├── generator.py     # 多周期报告生成器
@@ -220,6 +224,8 @@ pytest tests/ -v --cov=. --cov-report=html
 - ✅ **CodeBuddy 支持** - 完整实现会话数据采集
 - ✅ **豆包 Selenium 支持** - 完整实现会话数据采集
 - ✅ **VSCode / IDEA 框架** - 基础架构完成，待完善采集逻辑
+- ✅ **Shell History 采集** - 支持 zsh/bash/PowerShell，macOS/Windows/Linux 跨平台
+- ✅ **Git Commits 采集** - 自动扫描本地 git 仓库提交记录
 - ✅ **多周期报告** - 支持日报、周报、月报、年报生成
 - ✅ **双格式输出** - JSON（机器可读）+ Markdown（人类可读）
 - ✅ **智能会话摘要** - 支持 LLM 智能摘要和规则提取两种模式
@@ -230,12 +236,11 @@ pytest tests/ -v --cov=. --cov-report=html
 AIJourney 的目标是成为**个人全量工作数据的聚合分析平台**，记录你与 AI 协作的每一步：
 
 - ⚪ **更多 AI 助手** - DeepSeek、OpenClaw 等主流 AI 编程插件
-- ⚪ **扩展数据源** - 网页 AI 对话、本地对话记录、系统操作日志
 - ⚪ **VSCode / IDEA 完整实现** - 完善采集逻辑，支持完整数据采集
 - ⚪ **增量采集** - 会话 ID 去重，避免重复采集
 - ⚪ **敏感信息过滤** - 自动脱敏 API Key 等敏感信息
-- ⚪ **跨平台支持** - 完整支持 macOS 和 Windows 10 环境
 - ⚪ **定时任务** - macOS launchd / crontab 自动定时生成报告
+- ⚪ **Claude Code Hooks 集成** - 会话结束时自动触发采集
 
 让每一段 AI 协作都被永久记录，让你的成长可视化。
 

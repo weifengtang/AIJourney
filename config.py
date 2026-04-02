@@ -25,7 +25,10 @@ class Config:
     
     # 采集配置
     enabled_collectors: List[str] = field(
-        default_factory=lambda: ["claude_code", "codebuddy", "vscode", "idea", "doubao_selenium"]
+        default_factory=lambda: [
+            "claude_code", "codebuddy", "vscode", "idea", "doubao_selenium",
+            "shell_history", "git_commits",
+        ]
     )
     target_date: date = field(default_factory=date.today)
     
