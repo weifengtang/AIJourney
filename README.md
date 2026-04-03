@@ -68,31 +68,34 @@
 ```bash
 git clone https://github.com/weifengtang/AIJourney.git
 cd AIJourney
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 2. 运行
 
 ```bash
 # 采集今天的数据，生成日报
-python main.py
+python3 main.py
 
 # 指定日期（格式 YYYY-MM-DD）
-python main.py --date 2026-03-25
+python3 main.py --date 2026-03-25
 
 # 指定报告周期（daily/weekly/monthly/yearly）
-python main.py --period weekly
-python main.py --period monthly
-python main.py --period yearly
+python3 main.py --period weekly
+python3 main.py --period monthly
+python3 main.py --period yearly
 
 # 指定输出目录
-python main.py --output ./my_reports
+python3 main.py --output ./my_reports
 
 # 只启用指定采集器
-python main.py --collectors claude_code codebuddy
+python3 main.py --collectors claude_code codebuddy
 
 # 调试模式（输出详细日志）
-python main.py --log-level DEBUG
+python3 main.py --log-level DEBUG
+
+# 或使用虚拟环境中的 Python（推荐）
+.venv/bin/python main.py --period monthly
 ```
 
 ### 3. 配置（可选）
@@ -189,10 +192,13 @@ AIJourney/
 
 ```bash
 # 运行所有测试
-pytest tests/ -v
+python3 -m pytest tests/ -v
+
+# 或使用虚拟环境
+.venv/bin/python -m pytest tests/ -v
 
 # 查看覆盖率
-pytest tests/ -v --cov=. --cov-report=html
+python3 -m pytest tests/ -v --cov=. --cov-report=html
 # 打开 htmlcov/index.html 查看覆盖率
 ```
 
