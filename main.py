@@ -158,8 +158,8 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="./output",
-        help="输出目录（默认：./output）"
+        default="/work/doc/aiJourneyData",
+        help="输出目录（默认：/work/doc/aiJourneyData）"
     )
     parser.add_argument(
         "--daily-report-dir",

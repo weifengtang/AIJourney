@@ -74,7 +74,7 @@ class AIJourneySkill:
     
     def __init__(
         self,
-        output_dir: str = "./output",
+        output_dir: str = "/work/doc/aiJourneyData",
         log_level: str = "INFO",
         config: Optional[Dict[str, Any]] = None,
     ):

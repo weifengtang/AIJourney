@@ -832,7 +832,8 @@ class DoubaoSeleniumCollector(BaseCollector):
         print(md)
         print("=" * 60)
 
-        output_dir = Path("./output")
+        from config import get_config
+        output_dir = get_config().output_dir
         output_dir.mkdir(exist_ok=True)
         output_file = output_dir / f"doubao_daily_report_{datetime.now().strftime('%Y%m%d')}.md"
         with open(output_file, "w", encoding="utf-8") as f:

@@ -16,8 +16,8 @@ class Config:
     """全局配置"""
     
     # 输出配置
-    output_dir: Path = field(default_factory=lambda: Path("./output"))
-    daily_report_dir: Path = field(default_factory=lambda: Path("./output"))
+    output_dir: Path = field(default_factory=lambda: Path("/work/doc/aiJourneyData"))
+    daily_report_dir: Path = field(default_factory=lambda: Path("/work/doc/aiJourneyData"))
     output_format: List[str] = field(default_factory=lambda: ["json", "markdown"])
     
     # 报告周期配置
