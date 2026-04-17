@@ -2,6 +2,8 @@
 Claude Code 采集器
 
 采集 Claude Code 的会话数据
+支持跨平台路径自动识别（Windows/macOS/Linux）
+支持通过环境变量手动指定路径
 """
 
 import json

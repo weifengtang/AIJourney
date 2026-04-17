@@ -1,85 +1,51 @@
 """
-AIJourney 采集器基类模块
+基础采集器模块
 
-定义采集器的基类和注册机制
+定义统一的采集器接口和数据结构
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, date
+from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
-from typing import List, Dict, Type, Optional, Any
-import logging
-
-
-logger = logging.getLogger(__name__)
+from typing import List, Dict, Optional, Any
 
 
 @dataclass
 class Message:
     """消息数据结构"""
-    role: str                    # user / assistant
-    content: str                 # 消息内容
-    timestamp: datetime          # 时间戳
-    tool_calls: List[Dict[str, Any]] = field(default_factory=list)  # 工具调用
-    
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "role": self.role,
-            "content": self.content,
-            "timestamp": self.timestamp.isoformat(),
-            "tool_calls": self.tool_calls,
-        }
+    role: str  # user, assistant, system
+    content: str
+    timestamp: datetime
 
 
 @dataclass
 class SessionData:
-    """单个会话的数据结构"""
-    
-    # 基础信息
-    session_id: str              # 会话唯一标识
-    source: str                  # 来源：claude_code / vscode / idea / codebuddy
-    project_path: Optional[str] = None  # 项目路径
-    
-    # 时间信息
-    start_time: datetime = field(default_factory=datetime.now)  # 开始时间
-    end_time: Optional[datetime] = None  # 结束时间
-    
-    # 内容信息
-    title: Optional[str] = None  # 会话标题
-    summary: Optional[str] = None  # 摘要
-    messages: List[Message] = field(default_factory=list)  # 消息列表
-    files_modified: List[str] = field(default_factory=list)  # 修改的文件列表
-    
-    # 统计信息
-    tokens_input: int = 0        # 输入 token 数
-    tokens_output: int = 0       # 输出 token 数
-    
-    def to_dict(self) -> dict:
-        """转换为字典"""
-        return {
-            "session_id": self.session_id,
-            "source": self.source,
-            "project_path": self.project_path,
-            "start_time": self.start_time.isoformat(),
-            "end_time": self.end_time.isoformat() if self.end_time else None,
-            "title": self.title,
-            "summary": self.summary,
-            "messages": [msg.to_dict() for msg in self.messages],
-            "files_modified": self.files_modified,
-            "tokens_input": self.tokens_input,
-            "tokens_output": self.tokens_output,
-        }
+    """会话数据结构"""
+    session_id: str
+    source: str  # 数据源标识：claude_code, codebuddy, git_commits
+    project_path: str
+    start_time: datetime
+    end_time: datetime
+    title: str
+    summary: str
+    messages: List[Message]
+    files_modified: List[str]
+    tokens_input: int
+    tokens_output: int
 
 
 class BaseCollector(ABC):
-    """采集器基类"""
+    """基础采集器抽象类"""
     
-    # 采集器元数据（子类必须覆盖）
     name: str = "base"
     version: str = "1.0.0"
-    priority: int = 100  # 优先级（越小越先执行）
+    priority: int = 50  # 优先级，数值越小优先级越高
+    
+    @abstractmethod
+    def get_data_path(self) -> Path:
+        """获取数据源路径"""
+        pass
     
     @abstractmethod
     def collect(self, target_date: date) -> List[SessionData]:
@@ -96,85 +62,88 @@ class BaseCollector(ABC):
     
     def validate(self) -> bool:
         """
-        验证采集器是否可用
+        验证数据源是否可用
         
         Returns:
-            True 如果采集器可用，False 否则
+            是否可用
         """
         data_path = self.get_data_path()
-        if not data_path.exists():
-            logger.warning(f"[{self.name}] 数据路径不存在: {data_path}")
-            return False
-        return True
+        return data_path.exists()
     
-    @abstractmethod
-    def get_data_path(self) -> Path:
-        """
-        获取数据源路径
-        
-        Returns:
-            数据源路径
-        """
-        pass
+    def get_name(self) -> str:
+        """获取采集器名称"""
+        return self.name
     
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={self.name} version={self.version}>"
+    def get_version(self) -> str:
+        """获取采集器版本"""
+        return self.version
+    
+    def get_priority(self) -> int:
+        """获取采集器优先级"""
+        return self.priority
 
 
 # 采集器注册表
-_COLLECTORS: Dict[str, Type[BaseCollector]] = {}
+_collectors: Dict[str, BaseCollector] = {}
 
 
-def register_collector(cls: Type[BaseCollector]) -> Type[BaseCollector]:
+def register_collector(cls):
     """
-    装饰器：注册采集器
+    装饰器：注册采集器类
     
     Args:
         cls: 采集器类
     
     Returns:
-        注册后的采集器类
+        装饰后的类
     """
-    _COLLECTORS[cls.name] = cls
-    logger.debug(f"注册采集器: {cls.name}")
+    if not issubclass(cls, BaseCollector):
+        raise ValueError("必须继承 BaseCollector")
+    
+    instance = cls()
+    _collectors[instance.name] = instance
     return cls
 
 
-def get_collector(name: str) -> Optional[Type[BaseCollector]]:
+def get_collector(name: str) -> Optional[BaseCollector]:
     """
-    根据名称获取采集器类
+    根据名称获取采集器实例
     
     Args:
         name: 采集器名称
     
     Returns:
-        采集器类，如果不存在返回 None
+        采集器实例，如果不存在返回 None
     """
-    return _COLLECTORS.get(name)
+    return _collectors.get(name)
 
 
-def get_all_collectors() -> List[Type[BaseCollector]]:
+def get_all_collectors() -> List[BaseCollector]:
+    """获取所有已注册的采集器"""
+    return sorted(_collectors.values(), key=lambda c: c.priority)
+
+
+def collect_all(target_date: date) -> List[SessionData]:
     """
-    获取所有已注册的采集器类
+    采集所有数据源的数据
+    
+    Args:
+        target_date: 目标日期
     
     Returns:
-        采集器类列表
+        所有会话数据列表
     """
-    return list(_COLLECTORS.values())
-
-
-def get_all_collector_instances() -> List[BaseCollector]:
-    """
-    获取所有已注册的采集器实例
+    all_sessions = []
     
-    Returns:
-        采集器实例列表（按优先级排序）
-    """
-    collectors = [cls() for cls in _COLLECTORS.values()]
-    return sorted(collectors, key=lambda c: c.priority)
-
-
-def clear_collectors():
-    """清空采集器注册表（用于测试）"""
-    global _COLLECTORS
-    _COLLECTORS = {}
+    for collector in get_all_collectors():
+        try:
+            sessions = collector.collect(target_date)
+            all_sessions.extend(sessions)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"采集器 {collector.name} 执行失败: {e}")
+    
+    # 按开始时间排序
+    all_sessions.sort(key=lambda s: s.start_time)
+    return all_sessions

@@ -1,0 +1,18 @@
+{
+  "claude_code_path": "~/.claude",
+  "codebuddy_storage_path": "~/Library/Application Support/CodeBuddy/storage",
+  "git_search_paths": [
+    "~/work",
+    "~/projects",
+    "~/code"
+  ],
+  "report_dir": "./reports",
+  "llm": {
+    "provider": "claude",
+    "api_key": "",
+    "api_base": "",
+    "model": "claude-3-sonnet-20240229",
+    "temperature": 0.3,
+    "max_tokens": 4000
+  }
+}

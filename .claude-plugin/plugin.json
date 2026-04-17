@@ -1,0 +1,111 @@
+{
+    "name": "aijourney",
+    "version": "2.0.0",
+    "title": "AI Journey",
+    "description": "AI 对话历史记录与分析工具 - 自动采集 Claude Code、CodeBuddy、Git 数据，生成智能日报/周报",
+    "author": "AI Journey Team",
+    "license": "MIT",
+    "homepage": "https://github.com/AIJourney/AIJourney",
+    "keywords": ["AI", "对话记录", "日报", "周报", "Git", "Claude", "CodeBuddy"],
+    "commands": [
+        {
+            "name": "daily-report",
+            "description": "生成今日日报",
+            "usage": "/daily-report",
+            "handler": "commands/daily-report.py"
+        },
+        {
+            "name": "daily-report-ai",
+            "description": "生成 AI 增强日报（使用 LLM 总结）",
+            "usage": "/daily-report-ai",
+            "handler": "commands/daily-report-ai.py"
+        },
+        {
+            "name": "weekly-report",
+            "description": "生成本周周报",
+            "usage": "/weekly-report",
+            "handler": "commands/weekly-report.py"
+        },
+        {
+            "name": "search",
+            "description": "搜索历史对话",
+            "usage": "/search <关键词>",
+            "handler": "commands/search.py"
+        }
+    ],
+    "configuration": {
+        "claude_code_path": {
+            "type": "string",
+            "title": "Claude Code 数据路径",
+            "description": "Claude Code 会话数据存储目录",
+            "default": "~/.claude"
+        },
+        "codebuddy_storage_path": {
+            "type": "string",
+            "title": "CodeBuddy 数据路径",
+            "description": "CodeBuddy 会话数据存储目录",
+            "default": "~/Library/Application Support/CodeBuddy/storage"
+        },
+        "git_search_paths": {
+            "type": "array",
+            "title": "Git 仓库搜索路径",
+            "description": "搜索 Git 仓库的目录列表",
+            "default": ["~/work", "~/projects", "~/code"]
+        },
+        "report_dir": {
+            "type": "string",
+            "title": "报告输出目录",
+            "description": "生成的日报/周报保存目录",
+            "default": "./reports"
+        },
+        "llm": {
+            "type": "object",
+            "title": "LLM 配置",
+            "description": "AI 报告增强的 LLM 配置",
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "title": "LLM 提供商",
+                    "enum": ["claude", "openai", "mock"],
+                    "default": "claude"
+                },
+                "api_key": {
+                    "type": "string",
+                    "title": "API 密钥",
+                    "description": "LLM 服务的 API Key"
+                },
+                "model": {
+                    "type": "string",
+                    "title": "模型名称",
+                    "default": "claude-3-sonnet-20240229"
+                },
+                "temperature": {
+                    "type": "number",
+                    "title": "温度参数",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.3
+                },
+                "max_tokens": {
+                    "type": "integer",
+                    "title": "最大 Token 数",
+                    "minimum": 100,
+                    "maximum": 16000,
+                    "default": 4000
+                }
+            }
+        }
+    },
+    "platforms": ["darwin", "windows", "linux"],
+    "storage": {
+        "type": "sqlite",
+        "path": "data/dialogues.db"
+    },
+    "requirements": {
+        "python": ">=3.10",
+        "packages": [
+            "anthropic",
+            "openai"
+        ]
+    }
+}
