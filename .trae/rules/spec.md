@@ -1,1 +1,0 @@
-阅读rules/(../../rules/ProjectRule.mdc)
