@@ -12,7 +12,7 @@
 ## 📁 目录结构
 
 ```
-openclaw-skill/
+ai_journey_skill/
 ├── SKILL.md              # Skill 元数据（必需）
 ├── scripts/              # 脚本目录
 │   ├── collectors/       # 数据采集器
@@ -96,17 +96,17 @@ skillhub uninstall ai_journey
 
 ```bash
 # 本地安装测试
-cp -r ./openclaw-skill ~/.openclaw/workspace/skills/ai_journey
+cp -r ./ai_journey_skill ~/.openclaw/workspace/skills/ai_journey
 ```
 
 ### 打包发布
 
 ```bash
 # 打包 Skill（生成可发布的 zip 包）
-zip -r aijourney-openclaw-skill.zip openclaw-skill/
+zip -r aijourney-ai_journey_skill.zip ai_journey_skill/
 
 # 发布到 ClawHub
-skillhub publish ./openclaw-skill
+skillhub publish ./ai_journey_skill
 ```
 
 ## 🛡️ 隐私说明

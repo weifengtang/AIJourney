@@ -72,7 +72,7 @@ AIJourney/
 │   └── git_commits.py       # Git 提交采集器
 ├── llm/                     # LLM 报告增强模块
 │   └── report_enhancer.py   # AI 报告增强器
-├── openclaw-skill/          # OpenClaw Skill 打包目录
+├── ai_journey_skill/          # OpenClaw Skill 打包目录
 ├── config.py                # 配置模块（跨平台路径管理）
 ├── config.json              # 配置文件示例
 └── reports/                 # 生成的报告文件
@@ -176,14 +176,14 @@ AI Journey 在 Claude Code 环境中**自动使用内置 LLM**，无需额外配
 
 ## 📦 OpenClaw Skill
 
-`openclaw-skill/` 目录是为 **OpenClaw 生态系统**准备的打包目录，可发布到技能市场供其他用户使用。
+`ai_journey_skill/` 目录是为 **OpenClaw 生态系统**准备的打包目录，可发布到技能市场供其他用户使用。
 
 ```bash
 # 打包 Skill
-zip -r aijourney-skill.zip openclaw-skill/
+zip -r aijourney-skill.zip ai_journey_skill/
 
 # 本地安装测试
-cp -r ./openclaw-skill ~/.openclaw/workspace/skills/ai_journey
+cp -r ./ai_journey_skill ~/.openclaw/workspace/skills/ai_journey
 ```
 
 ---

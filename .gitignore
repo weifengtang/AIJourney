@@ -43,8 +43,8 @@ logs/
 
 # Data directories (runtime data, not to be committed)
 data/
-openclaw-skill/scripts/data/
-openclaw-skill/scripts/logs/
+ai_journey_skill/scripts/data/
+ai_journey_skill/scripts/logs/
 
 # Cache
 .pytest_cache/
