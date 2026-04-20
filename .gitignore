@@ -63,3 +63,4 @@ settings.json
 .doubao-chrome-profile/
 .doubao-cache/
 .summary-cache/
+*.zip
