@@ -1,44 +1,185 @@
 """
-Git 提交记录采集器
+Git 提交记录采集器（优化版）
 
-采集 Git 仓库的提交记录
-支持跨平台路径自动识别（Windows/macOS/Linux）
-支持通过环境变量手动指定搜索路径
+优化点：
+1. Git 仓库缓存机制（P0）
+2. Git 增量采集（P0）
+3. 搜索剪枝优化（P1）
 """
 
 import subprocess
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 from typing import List, Dict, Tuple
 import logging
+import os
 
 from .base import BaseCollector, SessionData, Message, register_collector
 from config import get_config
-
+from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 
 
+# 搜索剪枝：跳过的目录名称
+SKIP_DIRS = {
+    'node_modules', '.git', '.venv', 'venv', '__pycache__',
+    '.npm', '.yarn', 'build', 'dist', '.idea', '.vscode',
+    'vendor', 'target', 'Caches', '.Trash', 'Library'
+}
+
+# 最大搜索深度
+MAX_SEARCH_DEPTH = 6
+
+
 @register_collector
 class GitCommitsCollector(BaseCollector):
-    """Git 提交记录采集器"""
+    """Git 提交记录采集器（优化版）"""
     
     name = "git_commits"
-    version = "2.0.0"
+    version = "3.0.0"
     priority = 30
+    
+    def __init__(self):
+        self._cached_repos = None
     
     def get_data_path(self) -> Path:
         """获取数据源路径（返回第一个搜索路径）"""
         return get_config().git_search_paths[0] if get_config().git_search_paths else Path('.')
     
+    def _search_git_repos_with_cache(self, search_path: Path) -> List[Path]:
+        """
+        搜索 Git 仓库，使用缓存机制（P0）
+        
+        Args:
+            search_path: 搜索路径
+        
+        Returns:
+            Git 仓库路径列表
+        """
+        # 尝试使用内存缓存
+        if self._cached_repos is not None:
+            logger.debug(f"[{self.name}] 使用内存缓存的仓库列表")
+            return self._cached_repos
+        
+        # 尝试加载文件缓存
+        cache_data = cache_manager.load_cache("git_repos")
+        if cache_data is not None:
+            repos_data = cache_data.get("data", [])
+            self._cached_repos = [Path(r) for r in repos_data]
+            logger.debug(f"[{self.name}] 使用文件缓存的仓库列表，共 {len(self._cached_repos)} 个")
+            return self._cached_repos
+        
+        # 执行全目录搜索
+        logger.info(f"[{self.name}] 首次搜索 Git 仓库...")
+        repos = []
+        
+        try:
+            repos = self._search_git_repos_recursive(search_path, current_depth=0)
+        except Exception as e:
+            logger.error(f"[{self.name}] 搜索 Git 仓库失败: {e}")
+        
+        # 去重
+        repos = list(dict.fromkeys(repos))
+        
+        # 保存缓存
+        self._cached_repos = repos
+        cache_manager.save_cache("git_repos", [str(r) for r in repos], ttl_days=7)
+        
+        logger.info(f"[{self.name}] 发现 {len(repos)} 个 Git 仓库")
+        return repos
+    
+    def _search_git_repos_recursive(self, path: Path, current_depth: int) -> List[Path]:
+        """
+        递归搜索 Git 仓库（带剪枝优化）
+        
+        Args:
+            path: 当前路径
+            current_depth: 当前深度
+        
+        Returns:
+            Git 仓库路径列表
+        """
+        repos = []
+        
+        # 超过最大深度，停止搜索
+        if current_depth > MAX_SEARCH_DEPTH:
+            return repos
+        
+        try:
+            # 检查权限
+            if not os.access(path, os.R_OK):
+                return repos
+            
+            for child in path.iterdir():
+                # 跳过符号链接
+                if child.is_symlink():
+                    continue
+                
+                # 跳过黑名单目录
+                if child.name in SKIP_DIRS:
+                    continue
+                
+                # 跳过隐藏目录（除了 .git）
+                if child.name.startswith('.') and child.name != '.git':
+                    continue
+                
+                try:
+                    if child.is_dir():
+                        # 检查是否是 Git 仓库
+                        git_dir = child / ".git"
+                        if git_dir.exists() and git_dir.is_dir():
+                            repos.append(child)
+                        else:
+                            # 继续递归搜索
+                            repos.extend(self._search_git_repos_recursive(child, current_depth + 1))
+                except PermissionError:
+                    continue
+                except Exception as e:
+                    logger.debug(f"[{self.name}] 访问 {child} 失败: {e}")
+                    continue
+        
+        except PermissionError:
+            pass
+        except Exception as e:
+            logger.debug(f"[{self.name}] 搜索路径 {path} 失败: {e}")
+        
+        return repos
+    
+    def _get_cached_commits(self, repo_path: Path, target_date: date) -> set:
+        """
+        获取已缓存的提交记录（增量采集）
+        
+        Args:
+            repo_path: 仓库路径
+            target_date: 目标日期
+        
+        Returns:
+            已采集的提交哈希集合
+        """
+        cache_key = f"git_commits_{repo_path.name}_{target_date}"
+        cache_data = cache_manager.load_cache(cache_key)
+        
+        if cache_data is not None:
+            return set(cache_data.get("data", []))
+        
+        return set()
+    
+    def _save_cached_commits(self, repo_path: Path, target_date: date, commit_hashes: set) -> None:
+        """
+        保存提交记录到缓存
+        
+        Args:
+            repo_path: 仓库路径
+            target_date: 目标日期
+            commit_hashes: 提交哈希集合
+        """
+        cache_key = f"git_commits_{repo_path.name}_{target_date}"
+        cache_manager.save_cache(cache_key, list(commit_hashes), ttl_days=30)
+    
     def collect(self, target_date: date, save_raw: bool = True) -> List[SessionData]:
         """
-        采集指定日期的 Git 提交记录
-        
-        Git 数据搜索逻辑：
-        - 搜索路径: 配置文件中指定的 git_search_paths
-        - 自动发现: 在搜索路径下查找所有 .git 目录
-        - 数据获取: 通过 git log 命令获取提交记录
+        采集指定日期的 Git 提交记录（优化版）
         
         Args:
             target_date: 目标日期
@@ -75,7 +216,7 @@ class GitCommitsCollector(BaseCollector):
     
     def _search_git_repos(self, search_path: Path, target_date: date) -> List[SessionData]:
         """
-        在指定路径下搜索所有 Git 仓库并获取提交记录
+        在指定路径下搜索所有 Git 仓库并获取提交记录（优化版）
         
         Args:
             search_path: 搜索路径
@@ -86,12 +227,11 @@ class GitCommitsCollector(BaseCollector):
         """
         commits = []
         
-        # 查找所有 .git 目录
-        git_dirs = list(search_path.rglob(".git"))
+        # 使用缓存的仓库列表
+        repos = self._search_git_repos_with_cache(search_path)
         
-        for git_dir in git_dirs:
-            repo_path = git_dir.parent
-            logger.debug(f"[{self.name}] 发现 Git 仓库: {repo_path}")
+        for repo_path in repos:
+            logger.debug(f"[{self.name}] 处理 Git 仓库: {repo_path}")
             
             try:
                 repo_commits = self._get_commits_for_repo(repo_path, target_date)
@@ -103,7 +243,7 @@ class GitCommitsCollector(BaseCollector):
     
     def _get_commits_for_repo(self, repo_path: Path, target_date: date) -> List[SessionData]:
         """
-        获取单个仓库指定日期的提交记录
+        获取单个仓库指定日期的提交记录（增量采集）
         
         Args:
             repo_path: 仓库路径
@@ -114,8 +254,10 @@ class GitCommitsCollector(BaseCollector):
         """
         commits = []
         
+        # 加载已缓存的提交
+        cached_hashes = self._get_cached_commits(repo_path, target_date)
+        
         # 构建 git log 命令
-        # 格式: <timestamp>|<commit_hash>|<author>|<message>
         cmd = [
             'git', 'log',
             '--all',
@@ -135,10 +277,11 @@ class GitCommitsCollector(BaseCollector):
         )
         
         if result.returncode != 0:
-            # 如果有错误但不是致命错误，记录日志继续
             if result.stderr:
                 logger.debug(f"[{self.name}] git log 警告: {result.stderr.strip()}")
             return commits
+        
+        new_hashes = set()
         
         # 解析输出
         for line in result.stdout.strip().split('\n'):
@@ -155,6 +298,12 @@ class GitCommitsCollector(BaseCollector):
                 author = parts[2]
                 message = parts[3]
                 
+                # 跳过已采集的提交（增量采集）
+                if commit_hash in cached_hashes:
+                    continue
+                
+                new_hashes.add(commit_hash)
+                
                 commit_time = datetime.fromtimestamp(timestamp)
                 
                 # 创建会话数据
@@ -169,6 +318,10 @@ class GitCommitsCollector(BaseCollector):
                 
             except Exception as e:
                 logger.warning(f"[{self.name}] 解析提交记录失败: {line} - {e}")
+        
+        # 保存新采集的提交
+        if new_hashes:
+            self._save_cached_commits(repo_path, target_date, cached_hashes | new_hashes)
         
         return commits
     
@@ -187,16 +340,12 @@ class GitCommitsCollector(BaseCollector):
         Returns:
             SessionData 实例
         """
-        # 获取仓库名
         repo_name = repo_path.name
         
-        # 生成标题
         title = f"[{repo_name}] {message[:40]}" + ('...' if len(message) > 40 else '')
         
-        # 生成摘要
         summary = f"提交者: {author}\n提交消息: {message}"
         
-        # 创建模拟消息
         messages = [
             Message(
                 role='user',
@@ -210,7 +359,6 @@ class GitCommitsCollector(BaseCollector):
             ),
         ]
         
-        # 获取修改的文件（使用 git show --stat）
         files_modified = self._get_modified_files(repo_path, commit_hash)
         
         return SessionData(
@@ -254,7 +402,6 @@ class GitCommitsCollector(BaseCollector):
         
         files = []
         for line in result.stdout.strip().split('\n'):
-            # 跳过头部信息，只处理文件行
             if '|' in line and line.strip():
                 parts = line.split('|')[0].strip()
                 if parts and not parts.startswith(' '):
