@@ -41,6 +41,11 @@ output/.summary_cache/
 logs/
 *.log
 
+# Data directories (runtime data, not to be committed)
+data/
+openclaw-skill/scripts/data/
+openclaw-skill/scripts/logs/
+
 # Cache
 .pytest_cache/
 .coverage
