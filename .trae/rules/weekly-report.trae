@@ -1,0 +1,43 @@
+# AIJourney Weekly Report Rule
+# 周报生成规则
+
+[rule]
+name = "weekly-report"
+description = "生成每周工作汇报"
+trigger = "/weekly-report"
+priority = 2
+
+[rule.context]
+required = ["start_date", "end_date"]
+default_start_date = "monday"
+default_end_date = "sunday"
+
+[rule.actions]
+steps = [
+    {
+        type = "collect",
+        description = "采集本周数据",
+        collectors = ["claude_code", "codebuddy", "git_commits"],
+        params = { start_date = "{{start_date}}", end_date = "{{end_date}}" }
+    },
+    {
+        type = "save_raw",
+        description = "保存原始数据",
+        path = "data/raw/{{source}}/{{date}}/"
+    },
+    {
+        type = "enhance",
+        description = "AI 增强报告",
+        provider = "claude_code_internal"
+    },
+    {
+        type = "output",
+        description = "输出报告",
+        format = "markdown",
+        destination = ["stdout", "file"]
+    }
+]
+
+[rule.output]
+format = "markdown"
+template = "weekly_report"

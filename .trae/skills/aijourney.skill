@@ -1,0 +1,70 @@
+# AIJourney Skill Definition
+# 技能定义文件
+
+[skill]
+name = "AIJourney"
+id = "aijourney"
+version = "2.0.0"
+description = "AI 工作日报自动生成助手，支持多渠道数据采集和 AI 增强报告"
+author = "AIJourney Team"
+tags = ["daily-report", "weekly-report", "AI", "productivity"]
+
+[skill.commands]
+daily-report = {
+    description = "生成今日日报（默认 AI 增强）",
+    usage = "/daily-report",
+    example = "/daily-report"
+}
+weekly-report = {
+    description = "生成本周周报（默认 AI 增强）",
+    usage = "/weekly-report",
+    example = "/weekly-report"
+}
+range-report = {
+    description = "生成日期区间报告",
+    usage = "/range-report [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--week] [--month] [--days N] [--no-ai]",
+    example = "/range-report --week"
+}
+
+[skill.dependencies]
+python = ">=3.9"
+python-packages = [
+    "python-dateutil",
+    "gitpython"
+]
+
+[skill.configuration]
+claude_code_path = {
+    description = "Claude Code 数据目录",
+    type = "path",
+    default = "~/.claude"
+}
+codebuddy_storage_path = {
+    description = "CodeBuddy 数据目录",
+    type = "path",
+    default = "~/Library/Application Support/CodeBuddy/storage"
+}
+git_search_paths = {
+    description = "Git 仓库搜索路径列表",
+    type = "list",
+    default = ["~/work", "~/projects", "~/code"]
+}
+data_dir = {
+    description = "原始数据存储目录",
+    type = "path",
+    default = "./data"
+}
+log_dir = {
+    description = "日志输出目录",
+    type = "path",
+    default = "./logs"
+}
+report_dir = {
+    description = "报告输出目录",
+    type = "path",
+    default = "./reports"
+}
+
+[skill.permissions]
+file_read = [".claude/**", "**/.git/**"]
+file_write = ["./data/**", "./reports/**", "./logs/**"]

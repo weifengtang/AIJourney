@@ -10,13 +10,13 @@
     "commands": [
         {
             "name": "daily-report",
-            "description": "生成今日日报",
+            "description": "生成今日日报（默认 AI 增强）",
             "usage": "/daily-report",
             "handler": "commands/daily-report.py"
         },
         {
             "name": "daily-report-ai",
-            "description": "生成 AI 增强日报（使用 LLM 总结）",
+            "description": "生成 AI 增强日报（与 daily-report 相同）",
             "usage": "/daily-report-ai",
             "handler": "commands/daily-report-ai.py"
         },

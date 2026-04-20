@@ -1,0 +1,42 @@
+# AIJourney Daily Report Rule
+# 日报生成规则
+
+[rule]
+name = "daily-report"
+description = "生成每日工作汇报"
+trigger = "/daily-report"
+priority = 1
+
+[rule.context]
+required = ["date"]
+default_date = "today"
+
+[rule.actions]
+steps = [
+    {
+        type = "collect",
+        description = "采集今日数据",
+        collectors = ["claude_code", "codebuddy", "git_commits"],
+        params = { date = "{{date}}" }
+    },
+    {
+        type = "save_raw",
+        description = "保存原始数据",
+        path = "data/raw/{{source}}/{{date}}/"
+    },
+    {
+        type = "enhance",
+        description = "AI 增强报告",
+        provider = "claude_code_internal"
+    },
+    {
+        type = "output",
+        description = "输出报告",
+        format = "markdown",
+        destination = ["stdout", "file"]
+    }
+]
+
+[rule.output]
+format = "markdown"
+template = "daily_report"

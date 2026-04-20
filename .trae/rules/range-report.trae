@@ -1,0 +1,49 @@
+# AIJourney Range Report Rule
+# 区间报告生成规则
+
+[rule]
+name = "range-report"
+description = "生成指定日期区间的工作汇报"
+trigger = "/range-report"
+priority = 3
+
+[rule.context]
+required = ["start_date", "end_date"]
+optional = ["no_ai"]
+
+[rule.actions]
+steps = [
+    {
+        type = "collect",
+        description = "采集区间数据",
+        collectors = ["claude_code", "codebuddy", "git_commits"],
+        params = { start_date = "{{start_date}}", end_date = "{{end_date}}" }
+    },
+    {
+        type = "save_raw",
+        description = "保存原始数据",
+        path = "data/raw/{{source}}/{{date}}/"
+    },
+    {
+        type = "enhance",
+        description = "AI 增强报告",
+        provider = "claude_code_internal",
+        condition = "{{no_ai}} != true"
+    },
+    {
+        type = "output",
+        description = "输出报告",
+        format = "markdown",
+        destination = ["stdout", "file"]
+    }
+]
+
+[rule.output]
+format = "markdown"
+template = "range_report"
+
+[rule.shortcuts]
+week = { start_date = "monday", end_date = "today" }
+month = { start_date = "first_day_of_month", end_date = "today" }
+last_7_days = { start_date = "7_days_ago", end_date = "today" }
+last_30_days = { start_date = "30_days_ago", end_date = "today" }
